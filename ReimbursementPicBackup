@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# 简要描述您的脚本
+# 版权 2022 qymm
+
+function main() {
+  :
+}
+
+main "$@"
