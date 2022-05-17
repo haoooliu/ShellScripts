@@ -21,12 +21,6 @@ date=`(date +%Y%m%d)`
 l_time=`(date +%Y%m%d" "%H":"%M":"%S)`
 prefix=reim
 
-#ftp tool check
-which ftp
-if [ $? -eq 1 ]
-  then
-
-
 tar cvPfz ${backupdirectorydestination}/${prefix}backup${date}.tar.gz ${backupdirectory}
 
 ftp -in 2>>ftp_err<<EOF
