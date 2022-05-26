@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# BY MLH20220524
+# BY MLH20220526
 #############################################################################################
 ##                                   CAUTION                                               ##
 ## 1.Oracle checking only work for single instance database, RAC and ADG is not supported! ##
@@ -298,7 +298,39 @@ if [ $? -ne 0 ]
     rm -rf ${resultdirectory}/oracleresulttmp.lst
     echo "" >> ${resultfile}
 
-    #oracle backup status
+    #oracle backup directory status
+    echo "Oracle backup directory:" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_backupdirectory.sql
+    chmod -R 777 ${resultdirectory}
+    runuser -l oracle -c "sqlplus / as sysdba @${mydirectory}/sqlscripts/sql_backupdirectory.sql" > /dev/null 2>&1
+    cat ${resultdirectory}/oracleresulttmp.lst >> ${resultfile}
+    sed -i '1d' ${mydirectory}/sqlscripts/sql_backupdirectory.sql
+    orabackupdir=`cat ${resultdirectory}/oracleresulttmp.lst | grep EXPDIR | awk {'print $2'}`
+    ls -al ${orabackupdir} >> ${resultfile}
+    rm -rf ${resultdirectory}/oracleresulttmp.lst
+    echo "" >> ${resultfile}
+
+    #oracle patch list
+    echo "Oracle patches:" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    runuser -l oracle -c '$ORACLE_HOME/OPatch/opatch lspatches' >> ${resultfile}
+    echo "" >> ${resultfile}
+
+    #oracle alert log
+    echo "Oracle alert log:" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_diagtrace.sql
+    chmod -R 777 ${resultdirectory}
+    runuser -l oracle -c "sqlplus / as sysdba @${mydirectory}/sqlscripts/sql_diagtrace.sql" > /dev/null 2>&1
+    cat ${resultdirectory}/oracleresulttmp.lst >> ${resultfile}
+    sed -i '1d' ${mydirectory}/sqlscripts/sql_diagtrace.sql
+    oratracedir=`cat ${resultdirectory}/oracleresulttmp.lst | grep Trace | awk {'print $3'}`
+    tracefilename=`cd ${oratracedir} ; ls -al alert* | awk {'print $9'}`
+    tracefile=${oratracedir}/${tracefilename}
+    #echo $tracefile
+    rm -rf ${resultdirectory}/oracleresulttmp.lst
+    echo "" >> ${resultfile}
 
 fi
 echo "*****************************************************************************************************************" >> ${resultfile}
