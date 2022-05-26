@@ -5,6 +5,8 @@
 ##                                   CAUTION                                               ##
 ## 1.Oracle checking only work for single instance database, RAC and ADG is not supported! ##
 ## 2.CDB or PDB database is not suported either!                                           ##
+## 3.This script only check the oracle backup directory that named EXPDIR. IF you have     ##
+##   another one, check it manually.                                                       ##
 #############################################################################################
 
 #check root
@@ -295,6 +297,8 @@ if [ $? -ne 0 ]
     sed -i '1d' ${mydirectory}/sqlscripts/sql_tablespaces.sql
     rm -rf ${resultdirectory}/oracleresulttmp.lst
     echo "" >> ${resultfile}
+
+    #oracle backup status
 
 fi
 echo "*****************************************************************************************************************" >> ${resultfile}
