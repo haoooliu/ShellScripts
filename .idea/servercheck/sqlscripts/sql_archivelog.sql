@@ -1,0 +1,6 @@
+SET LINESIZE 100
+SET PAGESIZE 50
+archive log list;
+SPOOL OFF
+EXIT;
+
