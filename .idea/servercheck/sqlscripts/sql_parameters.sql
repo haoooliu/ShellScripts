@@ -1,5 +1,8 @@
 SET LINESIZE 100
 SET PAGESIZE 50
+column name heading "name" format a25
+column value heading "value" format a15
+
 select name, value
 from v$parameter
 where name = 'open_cursors'

@@ -1,6 +1,11 @@
 #!/bin/bash
 
 # BY MLH20220524
+#############################################################################################
+##                                   CAUTION                                               ##
+## 1.Oracle checking only work for single instance database, RAC and ADG is not supported! ##
+## 2.CDB or PDB database is not suported either!                                           ##
+#############################################################################################
 
 #check root
 if [ "$(whoami)" != 'root' ]
@@ -248,6 +253,8 @@ if [ $? -ne 0 ]
     rm -rf ${resultdirectory}/oracleresulttmp.lst
 
     #oracle archive log
+    echo "Oracle Archive Log Mode" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_archivelog.sql
     chmod -R 777 ${resultdirectory}
     runuser -l oracle -c "sqlplus / as sysdba @${mydirectory}/sqlscripts/sql_archivelog" > /dev/null 2>&1
@@ -266,6 +273,29 @@ if [ $? -ne 0 ]
     sed -i '1d' ${mydirectory}/sqlscripts/sql_fastrecovery.sql
     rm -rf ${resultdirectory}/oracleresulttmp.lst
     echo "" >> ${resultfile}
+
+    #oracle Some Parameters
+    echo "Oracle some parameters" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_parameters.sql
+    chmod -R 777 ${resultdirectory}
+    runuser -l oracle -c "sqlplus / as sysdba @${mydirectory}/sqlscripts/sql_parameters.sql" > /dev/null 2>&1
+    cat ${resultdirectory}/oracleresulttmp.lst >> ${resultfile}
+    sed -i '1d' ${mydirectory}/sqlscripts/sql_parameters.sql
+    rm -rf ${resultdirectory}/oracleresulttmp.lst
+    echo "" >> ${resultfile}
+
+    #oracle Tablespaces
+    echo "Oracle tablespaces:" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_tablespaces.sql
+    chmod -R 777 ${resultdirectory}
+    runuser -l oracle -c "sqlplus / as sysdba @${mydirectory}/sqlscripts/sql_tablespaces.sql" > /dev/null 2>&1
+    cat ${resultdirectory}/oracleresulttmp.lst >> ${resultfile}
+    sed -i '1d' ${mydirectory}/sqlscripts/sql_tablespaces.sql
+    rm -rf ${resultdirectory}/oracleresulttmp.lst
+    echo "" >> ${resultfile}
+
 fi
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
