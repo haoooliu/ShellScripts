@@ -228,6 +228,7 @@ echo "" >> ${resultfile}
 # ----------------------------------------------
 
 echo "**********************************************1.10 CRON**********************************************************" >> ${resultfile}
+
 if [ $serverversion -eq 6 ]
   then
     echo "1.10.1 crond running status:" >> ${resultfile}
@@ -251,6 +252,7 @@ if [ $serverversion -eq 6 ]
     fi
     rm -rf /tmp/crontask
 fi
+
 if [ $serverversion -eq 7 ]
   then
     echo "1.10.1 crond running status:" >> ${resultfile}
@@ -274,6 +276,7 @@ if [ $serverversion -eq 7 ]
     fi
     rm -rf /tmp/crontask
 fi
+
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
@@ -288,6 +291,7 @@ echo "tomcat" >> /tmp/apps
 echo "sshd" >> /tmp/apps
 echo "docker" >> /tmp/apps
 echo "redis" >> /tmp/apps
+
 if [ $serverversion -eq 6 ]
   then
     cat /tmp/apps | while read line
@@ -304,6 +308,7 @@ if [ $serverversion -eq 6 ]
       fi
     done
 fi
+
 if [ $serverversion -eq 7 ]
   then
     cat /tmp/apps | while read line
@@ -320,6 +325,7 @@ if [ $serverversion -eq 7 ]
       fi
     done
 fi
+
 rm -rf /tmp/apps
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
