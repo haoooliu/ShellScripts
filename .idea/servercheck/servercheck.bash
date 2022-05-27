@@ -87,7 +87,7 @@ echo "${displaydate} Start checking" | tee -a ${resultfile}
 # OS version
 # ----------------------------------------------
 osversion=$(cat /etc/system-release)
-echo "**************************************Operating system version information:**************************************" >> ${resultfile}
+echo "************************************1.1 perating system version information:*************************************" >> ${resultfile}
 echo ${osversion} >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
@@ -112,7 +112,7 @@ fi
 # hostname
 # ----------------------------------------------
 
-echo "****************************************************HOSTNAME*****************************************************" >> ${resultfile}
+echo "************************************************1.2 HOSTNAME*****************************************************" >> ${resultfile}
 hostname >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
@@ -121,7 +121,7 @@ echo "" >> ${resultfile}
 # check timezone
 # ----------------------------------------------
 
-echo "****************************************************TIMEZONE*****************************************************" >> ${resultfile}
+echo "*************************************************1.3 TIMEZONE*****************************************************" >> ${resultfile}
 mytimezone=`date -R`
 echo $mytimezone > /tmp/timezonetmp
 grep +0800 /tmp/timezonetmp > /dev/null
@@ -144,12 +144,12 @@ echo "" >> ${resultfile}
 # CPU
 # ----------------------------------------------
 
-echo "********************************************************CPU******************************************************" >> ${resultfile}
+echo "****************************************************1.4 CPU******************************************************" >> ${resultfile}
 lscpu >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-echo "******************************************************CPU_USAGE**************************************************" >> ${resultfile}
+echo "**************************************************1.5 CPU_USAGE**************************************************" >> ${resultfile}
 TIME_INTERVAL=5
 time=$(date "+%Y-%m-%d %H:%M:%S")
 LAST_CPU_INFO=$(cat /proc/stat | grep -w cpu | awk '{print $2,$3,$4,$5,$6,$7,$8}')
@@ -167,17 +167,17 @@ echo "CPU Usage:${CPU_USAGE}%" >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-echo "*****************************************************Memory******************************************************" >> ${resultfile}
+echo "*************************************************1.6 Memory******************************************************" >> ${resultfile}
 free -m >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-echo "******************************************************Disk*******************************************************" >> ${resultfile}
+echo "**************************************************1.7 Disk*******************************************************" >> ${resultfile}
 df -h >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-echo "*******************************************************IP********************************************************" >> ${resultfile}
+echo "***************************************************1.8 IP********************************************************" >> ${resultfile}
 ip a >> ${resultfile}
 ip route list >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
@@ -187,7 +187,7 @@ echo "" >> ${resultfile}
 # /var/log/messages check
 # ----------------------------------------------
 
-echo "*************************************************LinuxLogMessages************************************************" >> ${resultfile}
+echo "*********************************************1.9 LinuxLogMessages************************************************" >> ${resultfile}
 checkdays=30
 i=0
 errorsign=0
@@ -227,17 +227,17 @@ echo "" >> ${resultfile}
 # cron status
 # ----------------------------------------------
 
-echo "***************************************************CRON**********************************************************" >> ${resultfile}
+echo "**********************************************1.10 CRON**********************************************************" >> ${resultfile}
 if [ $serverversion -eq 6 ]
   then
-    echo "crond running status:" >> ${resultfile}
+    echo "1.10.1 crond running status:" >> ${resultfile}
     service crond status | head -9 >> ${resultfile}
     echo "" >> ${resultfile}
-    echo "CRON TABLE" >> ${resultfile}
+    echo "1.10.2 CRON TABLE" >> ${resultfile}
     echo "Min Hour Day Month Week" >> ${resultfile}
     crontab -l >> ${resultfile} 2>&1
     echo "" >> ${resultfile}
-    echo "CRON HISTORY" >> ${resultfile}
+    echo "1.10.3 CRON HISTORY" >> ${resultfile}
     crontab -l 2>&1 | awk {'print $7'} > /tmp/crontask
     crontaskp=`cat /tmp/crontask`
     if [ ! ${crontaskp} ]
@@ -253,14 +253,14 @@ if [ $serverversion -eq 6 ]
 fi
 if [ $serverversion -eq 7 ]
   then
-    echo "crond running status:" >> ${resultfile}
+    echo "1.10.1 crond running status:" >> ${resultfile}
     systemctl status crond | head -9 >> ${resultfile}
     echo "" >> ${resultfile}
-    echo "CRON TABLE" >> ${resultfile}
+    echo "1.10.2 CRON TABLE" >> ${resultfile}
     echo "Min Hour Day Month Week" >> ${resultfile}
     crontab -l >> ${resultfile} 2>&1
     echo "" >> ${resultfile}
-    echo "CRON HISTORY" >> ${resultfile}
+    echo "1.10.3 CRON HISTORY" >> ${resultfile}
     crontab -l 2>&1 | awk {'print $7'} > /tmp/crontask
     crontaskp=`cat /tmp/crontask`
     if [ ! ${crontaskp} ]
@@ -281,7 +281,7 @@ echo "" >> ${resultfile}
 # other app service status
 # ----------------------------------------------
 
-echo "****************************************************APPS*********************************************************" >> ${resultfile}
+echo "***********************************************1.11 APPS*********************************************************" >> ${resultfile}
 echo "CAUTION: This check is only for those services that have been registered with the system services" >> ${resultfile}
 echo "nginx" >> /tmp/apps
 echo "tomcat" >> /tmp/apps
@@ -328,13 +328,14 @@ echo "" >> ${resultfile}
 # Oracle Database status
 # ----------------------------------------------
 
-echo "*****************************************************ORACLE******************************************************" >> ${resultfile}
+echo "*************************************************2.1 ORACLE******************************************************" >> ${resultfile}
 id oracle > /dev/null 2>&1
 if [ $? -ne 0 ]
   then
     echo "Oracle not installed on this machine!" >> ${resultfile}
   else
     #oracle versions
+    echo "2.1.1 Oracle versions" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_version.sql
     chmod -R 777 ${resultdirectory}
     runuser -l oracle -c "sqlplus / as sysdba @${mydirectory}/sqlscripts/sql_version" > /dev/null 2>&1
@@ -343,7 +344,7 @@ if [ $? -ne 0 ]
     rm -rf ${resultdirectory}/oracleresulttmp.lst
 
     #oracle archive log
-    echo "Oracle Archive Log Mode" >> ${resultfile}
+    echo "2.1.2 Oracle Archive Log Mode" >> ${resultfile}
     echo "----------------------------------------------------------------------" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_archivelog.sql
     chmod -R 777 ${resultdirectory}
@@ -354,7 +355,7 @@ if [ $? -ne 0 ]
     echo "" >> ${resultfile}
 
     #oracle fast_recover
-    echo "Oracle Fast Recovery File" >> ${resultfile}
+    echo "2.1.3 Oracle Fast Recovery File" >> ${resultfile}
     echo "----------------------------------------------------------------------" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_fastrecovery.sql
     chmod -R 777 ${resultdirectory}
@@ -365,7 +366,7 @@ if [ $? -ne 0 ]
     echo "" >> ${resultfile}
 
     #oracle Some Parameters
-    echo "Oracle some parameters" >> ${resultfile}
+    echo "2.1.4 Oracle some parameters" >> ${resultfile}
     echo "----------------------------------------------------------------------" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_parameters.sql
     chmod -R 777 ${resultdirectory}
@@ -376,7 +377,7 @@ if [ $? -ne 0 ]
     echo "" >> ${resultfile}
 
     #oracle Tablespaces
-    echo "Oracle tablespaces:" >> ${resultfile}
+    echo "2.1.5 Oracle tablespaces:" >> ${resultfile}
     echo "----------------------------------------------------------------------" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_tablespaces.sql
     chmod -R 777 ${resultdirectory}
@@ -387,7 +388,7 @@ if [ $? -ne 0 ]
     echo "" >> ${resultfile}
 
     #oracle backup directory status
-    echo "Oracle backup directory:" >> ${resultfile}
+    echo "2.1.6 Oracle backup directory:" >> ${resultfile}
     echo "----------------------------------------------------------------------" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_backupdirectory.sql
     chmod -R 777 ${resultdirectory}
@@ -405,13 +406,13 @@ if [ $? -ne 0 ]
     echo "" >> ${resultfile}
 
     #oracle patch list
-    echo "Oracle patches:" >> ${resultfile}
+    echo "2.1.7 Oracle patches:" >> ${resultfile}
     echo "----------------------------------------------------------------------" >> ${resultfile}
     runuser -l oracle -c '$ORACLE_HOME/OPatch/opatch lspatches' >> ${resultfile}
     echo "" >> ${resultfile}
 
     #oracle alert log
-    echo "Oracle alert log:" >> ${resultfile}
+    echo "2.1.8 Oracle alert log:" >> ${resultfile}
     echo "----------------------------------------------------------------------" >> ${resultfile}
     sed -i $"1iSPOOL\ ${resultdirectory}/oracleresulttmp" ${mydirectory}/sqlscripts/sql_diagtrace.sql
     chmod -R 777 ${resultdirectory}
