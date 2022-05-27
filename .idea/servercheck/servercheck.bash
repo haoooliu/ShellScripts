@@ -1,36 +1,91 @@
 #!/bin/bash
 
-# BY MLH20220526
-#############################################################################################
-##                                   CAUTION                                               ##
-## 1.Oracle checking only work for single instance database, RAC and ADG is not supported! ##
-## 2.CDB or PDB database is not suported either!                                           ##
-## 3.This script only check the oracle backup directory that named EXPDIR. IF you have     ##
-##   another one, check it manually.                                                       ##
-#############################################################################################
+# --------------------------------------------------------------------------+
+#                  SERVER CHECK                                             |
+#   Filename: servercheck.bash                                              |
+#   Desc:                                                                   |
+#       The script use to check server status.                              |
+#       OS,Database,backups will be checked                                 |
+#   Usage:                                                                  |
+#       bash servercheck.bash                                               |
+#                                                                           |
+#   Author : MLH                                                            |
+#   Release : 20220527                                                      |
+# --------------------------------------------------------------------------+
 
-#check root
+echo "#############################################################################################"
+echo "##                                   CAUTION                                               ##"
+echo "## 1.Oracle checking only work for single instance database, RAC and ADG is not supported! ##"
+echo "## 2.CDB or PDB database is not suported either!                                           ##"
+echo "## 3.This script only check the oracle backup directory that named EXPDIR. IF you have     ##"
+echo "##   another one, check it manually.                                                       ##"
+echo "## 4.Supported platform: Redhat/CentOS/OracleLinux6,7,8. RockyLinux8.                      ##"
+echo "#############################################################################################"
+
+read -n1 -p "Continue after reading the caution [y|n]?" answer
+  case $answer in
+    Y | y)
+      echo "Fine, continue";;
+    N | n)
+      echo "OK, Good bye!";exit;;
+    *)
+      echo "Error choice";exit;;
+  esac
+
+# ----------------------------------------------
+# check root
+# ----------------------------------------------
+
 if [ "$(whoami)" != 'root' ]
   then
     echo "$time You must use root to run the script！"
     exit 1;
 fi
 
-#initialize serverversion 6 for linux 6. 7 for linux7,8
-serverversion=0
+# ----------------------------------------------
+# make directory that result file stored
+# ----------------------------------------------
 
-#make directory that result file stored
 mydirectory=$(pwd)
 date=`(date +%Y%m%d%H%M%S)`
+displaydate=`(date +%Y-%m-%d\ %H:%M:%S)`
 mkdir ${mydirectory}/result${date}
 resultdirectory=${mydirectory}/result${date}
 touch ${resultdirectory}/serverinfo.txt
 resultfile=${resultdirectory}/serverinfo.txt
 
-#start checking
-echo "$date Start checking" | tee -a ${resultfile}
+# ----------------------------------------------
+# check sqlscripts pkg
+# ----------------------------------------------
 
-#OS version
+if [ ! -e ${mydirectory}/sqlscripts.tar.gz ]
+  then
+    echo "sqlscripts.tar.gz not found!" | tee -a ${resultfile}
+    exit 1
+  else
+    sqlscriptsmd5=`md5sum ${mydirectory}/sqlscripts.tar.gz | awk {'print $1'}`
+    if [[ ${sqlscriptsmd5} != "2e43f7f2d345798a4a93a240a7e45e1b" ]]
+      then
+        echo "sqlscripts.tar.gz is corrupted! Please upload again!" | tee -a ${resultfile}
+        exit 1
+    fi
+fi
+tar xvfz ${mydirectory}/sqlscripts.tar.gz > /dev/null
+
+# ----------------------------------------------
+# initialize serverversion 6 for linux 6. 7 for linux7,8
+# ----------------------------------------------
+
+serverversion=0
+
+# ----------------------------------------------
+# start checking
+# ----------------------------------------------
+echo "${displaydate} Start checking" | tee -a ${resultfile}
+
+# ----------------------------------------------
+# OS version
+# ----------------------------------------------
 osversion=$(cat /etc/system-release)
 echo "**************************************Operating system version information:**************************************" >> ${resultfile}
 echo ${osversion} >> ${resultfile}
@@ -53,13 +108,19 @@ if [ $versionnum -eq 6 ]
     exit 1
 fi
 
-#hostname
+# ----------------------------------------------
+# hostname
+# ----------------------------------------------
+
 echo "****************************************************HOSTNAME*****************************************************" >> ${resultfile}
 hostname >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-#check timezone
+# ----------------------------------------------
+# check timezone
+# ----------------------------------------------
+
 echo "****************************************************TIMEZONE*****************************************************" >> ${resultfile}
 mytimezone=`date -R`
 echo $mytimezone > /tmp/timezonetmp
@@ -79,8 +140,11 @@ rm -rf /tmp/timezonetmp
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-#CPUs
-echo "********************************************************CPUs*****************************************************" >> ${resultfile}
+# ----------------------------------------------
+# CPU
+# ----------------------------------------------
+
+echo "********************************************************CPU******************************************************" >> ${resultfile}
 lscpu >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
@@ -119,7 +183,9 @@ ip route list >> ${resultfile}
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-#/var/log/messages check
+# ----------------------------------------------
+# /var/log/messages check
+# ----------------------------------------------
 
 echo "*************************************************LinuxLogMessages************************************************" >> ${resultfile}
 checkdays=30
@@ -146,7 +212,7 @@ fi
 if [ $errorsign -lt 1 ]
   then
     echo "No errors found in /var/log/messages" >> ${resultfile}
-    echo "CAUTION: No erros are found,it doesn't mean the os is running without problems." >> ${resultfile}
+    echo "CAUTION: No erros are found,it doesn't mean the os is running without issues." >> ${resultfile}
     echo "Please concact support, if you found any problems." >> ${resultfile}
 fi
 
@@ -157,7 +223,10 @@ cat /var/log/messages | grep critical >> ${resultdirectory}/messages.log
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-#cron status
+# ----------------------------------------------
+# cron status
+# ----------------------------------------------
+
 echo "***************************************************CRON**********************************************************" >> ${resultfile}
 if [ $serverversion -eq 6 ]
   then
@@ -165,14 +234,21 @@ if [ $serverversion -eq 6 ]
     service crond status | head -9 >> ${resultfile}
     echo "" >> ${resultfile}
     echo "CRON TABLE" >> ${resultfile}
+    echo "Min Hour Day Month Week" >> ${resultfile}
     crontab -l >> ${resultfile} 2>&1
     echo "" >> ${resultfile}
     echo "CRON HISTORY" >> ${resultfile}
-    crontab -l | awk {'print $7'} > /tmp/crontask
-    cat /tmp/crontask | while read line
-      do
-        cat /var/log/cron | grep $line >> ${resultfile}
-      done
+    crontab -l 2>&1 | awk {'print $7'} > /tmp/crontask
+    crontaskp=`cat /tmp/crontask`
+    if [ ! ${crontaskp} ]
+      then
+        echo "No cron job!" >> ${resultfile}
+    else
+      cat /tmp/crontask | while read line
+        do
+          cat /var/log/cron | grep $line >> ${resultfile}
+        done
+    fi
     rm -rf /tmp/crontask
 fi
 if [ $serverversion -eq 7 ]
@@ -181,20 +257,30 @@ if [ $serverversion -eq 7 ]
     systemctl status crond | head -9 >> ${resultfile}
     echo "" >> ${resultfile}
     echo "CRON TABLE" >> ${resultfile}
-    crontab -l >>${resultfile} 2>&1
+    echo "Min Hour Day Month Week" >> ${resultfile}
+    crontab -l >> ${resultfile} 2>&1
     echo "" >> ${resultfile}
     echo "CRON HISTORY" >> ${resultfile}
-    crontab -l | awk {'print $7'} > /tmp/crontask
-    cat /tmp/crontask | while read line
-      do
-        cat /var/log/cron | grep $line >> ${resultfile}
-      done
+    crontab -l 2>&1 | awk {'print $7'} > /tmp/crontask
+    crontaskp=`cat /tmp/crontask`
+    if [ ! ${crontaskp} ]
+      then
+        echo "No cron job!" >> ${resultfile}
+    else
+      cat /tmp/crontask | while read line
+        do
+          cat /var/log/cron | grep $line >> ${resultfile}
+        done
+    fi
     rm -rf /tmp/crontask
 fi
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-#other app service status
+# ----------------------------------------------
+# other app service status
+# ----------------------------------------------
+
 echo "****************************************************APPS*********************************************************" >> ${resultfile}
 echo "CAUTION: This check is only for those services that have been registered with the system services" >> ${resultfile}
 echo "nginx" >> /tmp/apps
@@ -209,10 +295,10 @@ if [ $serverversion -eq 6 ]
       service $line status > /dev/null 2>&1
       if [ $? -ne 0 ]
         then
-          echo "*****************************************************************************************************************" >> ${resultfile}
+          echo "++++++++++++++++++++++++++++++++++++++++++" >> ${resultfile}
           echo "Service $line not found in the system" >> ${resultfile}
         else
-          echo "*****************************************************************************************************************" >> ${resultfile}
+          echo "++++++++++++++++++++++++++++++++++++++++++" >> ${resultfile}
           echo "Server $line status" >> ${resultfile}
           service $line status | head -9 >> ${resultfile} 2>&1
       fi
@@ -238,10 +324,12 @@ rm -rf /tmp/apps
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
-#Oracle Database
+# ----------------------------------------------
+# Oracle Database status
+# ----------------------------------------------
+
 echo "*****************************************************ORACLE******************************************************" >> ${resultfile}
-#if oracle installed on the server
-id oracle > /dev/null
+id oracle > /dev/null 2>&1
 if [ $? -ne 0 ]
   then
     echo "Oracle not installed on this machine!" >> ${resultfile}
@@ -307,7 +395,12 @@ if [ $? -ne 0 ]
     cat ${resultdirectory}/oracleresulttmp.lst >> ${resultfile}
     sed -i '1d' ${mydirectory}/sqlscripts/sql_backupdirectory.sql
     orabackupdir=`cat ${resultdirectory}/oracleresulttmp.lst | grep EXPDIR | awk {'print $2'}`
-    ls -al ${orabackupdir} >> ${resultfile}
+    if [ ! ${orabackupdir} ]
+      then
+        echo "EXPDIR not found!" >> ${resultfile}
+      else
+        ls -al ${orabackupdir} >> ${resultfile}
+    fi
     rm -rf ${resultdirectory}/oracleresulttmp.lst
     echo "" >> ${resultfile}
 
@@ -328,10 +421,23 @@ if [ $? -ne 0 ]
     oratracedir=`cat ${resultdirectory}/oracleresulttmp.lst | grep Trace | awk {'print $3'}`
     tracefilename=`cd ${oratracedir} ; ls -al alert* | awk {'print $9'}`
     tracefile=${oratracedir}/${tracefilename}
-    #echo $tracefile
+    tail -n 20000 ${tracefile} > /tmp/tmpalertlog
+    cat /tmp/tmpalertlog | awk -f ${mydirectory}/sqlscripts/check_alert.awk > ${resultdirectory}/ora_alert.log
+    if [ -e ${resultdirectory}/ora_alert.log ]
+      then
+        echo "Warning or errors found in oracle alert log, check ${resultdirectory}/ora_alert.log for detail!" >> ${resultfile}
+      else
+        echo "No error or warnings found in oracle alert log" >> ${resultfile}
+        echo "CAUTION: No erros are found, it doesn't mean the database is running without issues." >> ${resultfile}
+        echo "Please concact support, if you found any problems." >> ${resultfile}
+    fi
+    rm -rf /tmp/tmpalertlog
     rm -rf ${resultdirectory}/oracleresulttmp.lst
     echo "" >> ${resultfile}
-
 fi
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
+
+rm -rf ${mydirectory}/sqlscripts
+displaydate=`(date +%Y-%m-%d\ %H:%M:%S)`
+echo "${displaydate} end progress, report saved to ${resultfile}." |tee -a ${resultfile}
