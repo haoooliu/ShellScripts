@@ -10,17 +10,21 @@
 #       bash servercheck.bash                                               |
 #                                                                           |
 #   Author  : MLH                                                           |
-#   Release : 20220527                                                      |
+#   Release : 20220606                                                      |
 # --------------------------------------------------------------------------+
 
-echo "#############################################################################################"
-echo "##                                   CAUTION                                               ##"
-echo "## 1.Oracle checking only work for single instance database, RAC and ADG is not supported! ##"
-echo "## 2.CDB or PDB database is not suported either!                                           ##"
-echo "## 3.This script only check the oracle backup directory that named EXPDIR. IF you have     ##"
-echo "##   another one, check it manually.                                                       ##"
-echo "## 4.Supported platform: Redhat/CentOS/OracleLinux6,7,8. RockyLinux8.                      ##"
-echo "#############################################################################################"
+echo "##############################################################################################"
+echo "##                                    CAUTION                                               ##"
+echo "## 1. Oracle checking only work for single instance database, RAC and ADG is not supported! ##"
+echo "## 2. CDB or PDB database is not suported either!                                           ##"
+echo "## 3. This script only check the oracle backup directory that named EXPDIR. IF you have     ##"
+echo "##    another one, check it manually.                                                       ##"
+echo "## 4. Supported platform: Redhat/CentOS/OracleLinux6,7,8. RockyLinux8.                      ##"
+echo "## 5. Please make sure that the my.cnf file of the mysql database is in /etc, otherwise     ##"
+echo "##    the script will not recognize it.                                                     ##"
+echo "## 6. The backup of the MySQL database will be verified using the script mysqlbackup.sh     ##"
+echo "##    Backups using other scripts are not supported.                                        ##"
+echo "##############################################################################################"
 
 read -n1 -p "Continue after reading the caution [y|n]?" answer
   case $answer in
@@ -64,7 +68,7 @@ if [ ! -e ${mydirectory}/sqlscripts.tar.gz ]
     exit 1
   else
     sqlscriptsmd5=`md5sum ${mydirectory}/sqlscripts.tar.gz | awk {'print $1'}`
-    if [[ ${sqlscriptsmd5} != "2e43f7f2d345798a4a93a240a7e45e1b" ]]
+    if [[ ${sqlscriptsmd5} != "3700b37c096d6e4f7d3b7a21cbb4cfa7" ]]
       then
         echo "sqlscripts.tar.gz is corrupted! Please upload again!" | tee -a ${resultfile}
         exit 1
@@ -288,6 +292,7 @@ echo "***********************************************1.11 APPS******************
 echo "CAUTION: This check is only for those services that have been registered with the system services" >> ${resultfile}
 echo "nginx" >> /tmp/apps
 echo "tomcat" >> /tmp/apps
+echo "tomcat9" >> /tmp/apps
 echo "sshd" >> /tmp/apps
 echo "docker" >> /tmp/apps
 echo "redis" >> /tmp/apps
@@ -445,6 +450,91 @@ fi
 echo "*****************************************************************************************************************" >> ${resultfile}
 echo "" >> ${resultfile}
 
+# ----------------------------------------------
+# Mysql Database Check
+# ----------------------------------------------
+
+echo "*************************************************3.1 MySQL*******************************************************" >> ${resultfile}
+if [ ! -e /etc/my.cnf ]
+  then
+    echo "/etc/my.cnf not found! MySQL may not installed on this machine!" >> ${resultfile}
+  else
+    #MySQL Password input
+    echo "Plese type in the root passowrd of MySQL (Press ENTER if root password is empty)"
+    read -s mysqlpasswd
+    DB_PASSWORD=${mysqlpasswd}
+    DB_PASSWORD_LEN=""
+    DB_PASSWORD_LEN=${#DB_PASSWORD}
+    if [ ${DB_PASSWORD_LEN} -eq 0 ]
+      then
+        mysql -uroot -e quit > /tmp/SQL_RESULT 2>&1
+      else
+        mysql -uroot -p${DB_PASSWORD} -e quit > /tmp/SQL_RESULT 2>&1
+    fi
+    cat /tmp/SQL_RESULT | grep ERROR
+    if [ $? -ne 0 ]
+      then
+        echo "Right Password !"
+      else
+        echo "Wrong Password !"
+        exit
+    fi
+    rm -rf /tmp/SQL_RESULT
+
+    #MySQL version
+    echo "3.1.1 MySQL version" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    mysql -uroot -p${DB_PASSWORD} -e "use mysql;select version()" 2>&1 | grep -v "mysql" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    echo "" >> ${resultfile}
+
+    #MySQL datafile
+    echo "3.1.2 MySQL datafile" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    mysqldatadir=`cat /etc/my.cnf | grep datadir | cut -d '=' -f 2`
+    ls -al ${mysqldatadir} >> ${resultfile}
+    du -sh ${mysqldatadir} >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    echo "" >> ${resultfile}
+
+    #MySQL backup
+    echo "3.1.3 MySQL backup" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    crontab -l 2>&1 > /tmp/crontabtmp
+    cat /tmp/crontabtmp | grep mysqlbackup.sh
+    if [ $? -ne 0 ]
+      then
+        echo "mysqlbackup scripts not found! Can not estimate the status of mysql backup!" >> ${resultfile}
+      else
+        mysqlbackupdir=`cat /tmp/crontabtmp | grep mysqlbackup.sh | awk {'print $7'}`
+        mysqkbackuploc=`cat ${mysqlbackupdir} | grep backupdirectoryname= | cut -d '=' -f 2`
+        ls -al ${mysqkbackuploc} >> ${resultfile}
+        du -sh ${mysqkbackuploc} >> ${resultfile}
+    fi
+    rm -rf /tmp/crontabtmp
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    echo "" >> ${resultfile}
+
+    #MySQL log
+    echo "3.1.4 MySQL log" >> ${resultfile}
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+    mysqlerrorlog=`cat /etc/my.cnf | grep log-error | cut -d '=' -f 2`
+    tail -n 20000 ${mysqlerrorlog} > /tmp/tmpmysqlalertlog
+    cat /tmp/tmpmysqlalertlog | awk -f ${mydirectory}/sqlscripts/check_mysqlerror.awk > ${resultdirectory}/mysql_error.log
+    if [ -e ${resultdirectory}/mysql_error.log ]
+      then
+        echo "Warning or errors found in mysql error log, check ${resultdirectory}/mysql_error.log for detail!" >> ${resultfile}
+      else
+        echo "No error or warnings found in mysql error log" >> ${resultfile}
+        echo "CAUTION: No erros are found, it doesn't mean the database is running without issues." >> ${resultfile}
+        echo "Please concact support, if you found any problems." >> ${resultfile}
+    fi
+    rm -rf /tmp/tmpmysqlalertlog
+    echo "----------------------------------------------------------------------" >> ${resultfile}
+fi
+echo "*****************************************************************************************************************" >> ${resultfile}
+echo "" >> ${resultfile}
+
 rm -rf ${mydirectory}/sqlscripts
 displaydate=`(date +%Y-%m-%d\ %H:%M:%S)`
-echo "${displaydate} end progress, report saved to ${resultfile}." |tee -a ${resultfile}
+echo "${displaydate} end progress, report saved to ${resultfile}." | tee -a ${resultfile}
