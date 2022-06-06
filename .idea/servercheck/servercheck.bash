@@ -16,7 +16,7 @@
 echo "##############################################################################################"
 echo "##                                    CAUTION                                               ##"
 echo "## 1. Oracle checking only work for single instance database, RAC and ADG is not supported! ##"
-echo "## 2. CDB or PDB database is not suported either!                                           ##"
+echo "## 2. CDB or PDB of 12c and above database is not suported!                                 ##"
 echo "## 3. This script only check the oracle backup directory that named EXPDIR. IF you have     ##"
 echo "##    another one, check it manually.                                                       ##"
 echo "## 4. Supported platform: Redhat/CentOS/OracleLinux6,7,8. RockyLinux8.                      ##"
@@ -238,7 +238,7 @@ if [ $serverversion -eq 6 ]
     echo "1.10.1 crond running status:" >> ${resultfile}
     service crond status | head -9 >> ${resultfile}
     echo "" >> ${resultfile}
-    echo "1.10.2 CRON TABLE" >> ${resultfile}
+    echo "1.10.2 CRON LIST" >> ${resultfile}
     echo "Min Hour Day Month Week" >> ${resultfile}
     crontab -l >> ${resultfile} 2>&1
     echo "" >> ${resultfile}
@@ -460,7 +460,7 @@ if [ ! -e /etc/my.cnf ]
     echo "/etc/my.cnf not found! MySQL may not installed on this machine!" >> ${resultfile}
   else
     #MySQL Password input
-    echo "Plese type in the root passowrd of MySQL (Press ENTER if root password is empty)"
+    echo "Please type in the root passowrd of MySQL (Press ENTER if root password is empty)"
     read -s mysqlpasswd
     DB_PASSWORD=${mysqlpasswd}
     DB_PASSWORD_LEN=""
@@ -504,7 +504,7 @@ if [ ! -e /etc/my.cnf ]
     cat /tmp/crontabtmp | grep mysqlbackup.sh
     if [ $? -ne 0 ]
       then
-        echo "mysqlbackup scripts not found! Can not estimate the status of mysql backup!" >> ${resultfile}
+        echo "mysqlbackup scripts not found! Can not check the status of mysql backup!" >> ${resultfile}
       else
         mysqlbackupdir=`cat /tmp/crontabtmp | grep mysqlbackup.sh | awk {'print $7'}`
         mysqkbackuploc=`cat ${mysqlbackupdir} | grep backupdirectoryname= | cut -d '=' -f 2`
