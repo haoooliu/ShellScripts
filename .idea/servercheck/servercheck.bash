@@ -71,7 +71,7 @@ if [ ! -e ${mydirectory}/sqlscripts.tar.gz ]; then
   exit 1
 else
   sqlscriptsmd5=$(md5sum ${mydirectory}/sqlscripts.tar.gz | awk {'print $1'})
-  if [[ ${sqlscriptsmd5} != "3700b37c096d6e4f7d3b7a21cbb4cfa7" ]]; then
+  if [[ ${sqlscriptsmd5} != "c4098512f0c54ab3a4d07aea955fee28" ]]; then
     echo "sqlscripts.tar.gz is corrupted! Please upload again!" | tee -a ${resultfile}
     exit 1
   fi
@@ -190,33 +190,16 @@ echo "" >>${resultfile}
 # ----------------------------------------------
 
 echo "*********************************************1.9 LinuxLogMessages************************************************" >>${resultfile}
-checkdays=30
-i=0
-errorsign=0
-
-while [ $i -lt $checkdays ]; do
-  prev_count=0
-  count=$(grep -i "$(date --date="$i day ago" '+%b %e')" /var/log/messages | egrep -wi 'warning|error|critical' | wc -l)
-  if [ "$prev_count" -lt "$count" ]; then
-    echo "WARNING: Errors found in /var/log/messages on "$(date --date="$i day ago" '+%Y-%m-%d')"" >>${resultfile}
-    errorsign=1
-  fi
-  i=$(expr $i + 1)
-done
-
-if [ $errorsign -eq 1 ]; then
-  echo "Snapshot will be copy to ${resultdirectory}/messages.log, check it for detail!" >>${resultfile}
-fi
-
-if [ $errorsign -lt 1 ]; then
-  echo "No errors found in /var/log/messages" >>${resultfile}
-  echo "CAUTION: No erros are found,it doesn't mean the os is running without issues." >>${resultfile}
+tail -n 20000 /var/log/messages >/tmp/linuxerrorlog
+cat /tmp/linuxerrorlog | awk -f ${mydirectory}/sqlscripts/check_linux.awk >${resultdirectory}/linux_error.log
+if [ -e ${resultdirectory}/linux_error.log ]; then
+  echo "Warning or errors found in linux error log, check ${resultdirectory}/linux_error.log for detail!" >>${resultfile}
+else
+  echo "No error or warnings found in linux error log" >>${resultfile}
+  echo "CAUTION: No erros are found, it doesn't mean the OS is running without issues." >>${resultfile}
   echo "Please concact support, if you found any problems." >>${resultfile}
 fi
-
-cat /var/log/messages | grep warning >>${resultdirectory}/messages.log
-cat /var/log/messages | grep error >>${resultdirectory}/messages.log
-cat /var/log/messages | grep critical >>${resultdirectory}/messages.log
+rm -rf /tmp/linuxerrorlog
 
 echo "*****************************************************************************************************************" >>${resultfile}
 echo "" >>${resultfile}
@@ -326,8 +309,8 @@ id oracle >/dev/null 2>&1
 if [ $? -ne 0 ]; then
   echo "Oracle not installed on this machine!" >>${resultfile}
 else
-  ps -ef | grep ora_pmon | grep -v color
-  if [ $? -ne 0 ]; then
+  oracleprocess=$(ps -ef | grep ora_pmon | grep -v gre | grep -v color | wc -l)
+  if [ ${oracleprocess} -lt 1 ]; then
     echo "Oracle not running on this machine!" >>${resultfile}
   else
     #oracle versions
@@ -446,8 +429,8 @@ if [ ! -e /etc/my.cnf ]; then
   echo "/etc/my.cnf not found! MySQL may not installed on this machine!" >>${resultfile}
 else
   #MySQL running check
-  ps -ef | grep mysqld | grep -v color >/dev/null 2>&1
-  if [ $? -ne 0 ]; then
+  mysqlprocess=$(ps -ef | grep mysqld | grep -v gre | grep -v color | wc -l)
+  if [ ${mysqlprocess} -lt 1 ]; then
     echo "MySQL not running on this machine!" >>${resultfile}
   else
     #MySQL Password input
@@ -490,7 +473,7 @@ else
     echo "3.1.3 MySQL backup" >>${resultfile}
     echo "----------------------------------------------------------------------" >>${resultfile}
     crontab -l 2>&1 >/tmp/crontabtmp
-    cat /tmp/crontabtmp | grep mysqlbackup.sh
+    cat /tmp/crontabtmp | grep mysqlbackup.sh > /dev/null
     if [ $? -ne 0 ]; then
       echo "mysqlbackup scripts not found! Can not check the status of mysql backup!" >>${resultfile}
     else
